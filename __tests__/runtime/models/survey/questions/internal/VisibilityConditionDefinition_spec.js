@@ -23,14 +23,14 @@ describe('VisibilityConditionDefinition', () => {
       const result = vcd.updateProperties(outputDefinitions, {
         outputDefinitionId: 'od2',
         comparisonType: 'answerValue',
-        value: '{{aaaaa.answer_value}}',
+        value: '{{od1.answer_value}}',
         operator: '!=',
         visibilityType: 'hide',
       });
       expect(result.getId()).toBe('id1');
       expect(result.getOutputDefinitionId()).toBe('od2');
       expect(result.getComparisonType()).toBe('answerValue');
-      expect(result.getValue()).toBe('{{aaaaa.answer_value}}');
+      expect(result.getValue()).toBe('{{od1.answer_value}}');
       expect(result.getOperator()).toBe('!=');
       expect(result.getVisibilityType()).toBe('hide');
     });
@@ -88,6 +88,79 @@ describe('VisibilityConditionDefinition', () => {
       expect(result.getComparisonType()).toBe(null);
       expect(result.getValue()).toBe(null);
       expect(result.getOperator()).toBe(null);
+      expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('comparisonTypeがfixedValueかつvalueに数値以外が入力された場合valueが空になる', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od1',
+        comparisonType: 'fixedValue',
+        value: '10',
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({ _id: 'od1', outputType: 'number' }),
+        new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
+      ]);
+      const result = vcd.updateProperties(outputDefinitions, {
+        value: 'a',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getOutputDefinitionId()).toBe('od1');
+      expect(result.getComparisonType()).toBe('fixedValue');
+      expect(result.getValue()).toBe(null);
+      expect(result.getOperator()).toBe('==');
+      expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('comparisonTypeがanswerValueかつvalueに存在する参照値が入力された場合入力値が設定される', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od1',
+        comparisonType: 'fixedValue',
+        value: '10',
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({ _id: 'od1', outputType: 'number' }),
+        new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
+      ]);
+      const result = vcd.updateProperties(outputDefinitions, {
+        comparisonType: 'answerValue',
+        value: '{{od1.answer_value}}',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getOutputDefinitionId()).toBe('od1');
+      expect(result.getComparisonType()).toBe('answerValue');
+      expect(result.getValue()).toBe('{{od1.answer_value}}');
+      expect(result.getOperator()).toBe('==');
+      expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('comparisonTypeがanswerValueかつvalueに存在しない参照値が入力された場合valueが空になる', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od1',
+        comparisonType: 'fixedValue',
+        value: '10',
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({ _id: 'od1', outputType: 'number' }),
+        new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
+      ]);
+      const result = vcd.updateProperties(outputDefinitions, {
+        comparisonType: 'answerValue',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getOutputDefinitionId()).toBe('od1');
+      expect(result.getComparisonType()).toBe('answerValue');
+      expect(result.getValue()).toBe(null);
+      expect(result.getOperator()).toBe('==');
       expect(result.getVisibilityType()).toBe('show');
     });
   });
