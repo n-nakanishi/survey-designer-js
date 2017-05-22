@@ -1,7 +1,9 @@
 /* eslint-env jest */
 import { List } from 'immutable';
+import SurveyDesignerState from '../../../../../../lib/runtime/models/SurveyDesignerState';
 import OutputDefinition from '../../../../../../lib/runtime/models/survey/questions/internal/OutputDefinition';
 import VisibilityConditionDefinition from '../../../../../../lib/runtime/models/survey/questions/internal/VisibilityConditionDefinition';
+import allOutputTypeJson from './ItemDefinition_allOutputType.json';
 
 describe('VisibilityConditionDefinition', () => {
   describe('update', () => {
@@ -162,6 +164,26 @@ describe('VisibilityConditionDefinition', () => {
       expect(result.getValue()).toBe(null);
       expect(result.getOperator()).toBe('==');
       expect(result.getVisibilityType()).toBe('show');
+    });
+  });
+
+  describe('validate', () => {
+    it('設問が存在しない場合', () => {
+      const survey = SurveyDesignerState.createFromJson({ survey: allOutputTypeJson }).getSurvey()
+        .updateIn(['pages', 0, 'questions', 0, 'items', 0], item => item.set('visibilityCondition', new VisibilityConditionDefinition({
+          outputDefinitionId: 'dummy',
+        })));
+      survey.refreshReplacer();
+      const errors = survey.validate();
+      expect(errors.size).toBe(2);
+      expect(errors.get(0)).toBe('パネルが選択されていません');
+      expect(errors.get(1)).toBe('設問 1-1 1つ目の選択肢の表示条件で設問の値が不正です');
+    });
+    it('比較方法が選択されていない場合', () => {
+    });
+    it('条件種別が選択されていない場合', () => {
+    });
+    describe('outputTypeがcheckboxの場合', () => {
     });
   });
 });
