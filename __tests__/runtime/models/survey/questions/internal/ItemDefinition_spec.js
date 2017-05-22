@@ -190,11 +190,15 @@ describe('ItemDefinition', () => {
       });
 
       it('answerValueと==が選ばれている場合', () => {
-        const survey = getSurvey('answerValue', '==', '10');
+        const survey = getSurvey('answerValue', '==', '{{cj2xe2p3a000q3k67smqup7ic.answer}}');
         const item = getItem(survey);
         const targetOutputDefinition = getTargetOutputDefinition(survey);
+        const answers = {
+          [targetOutputDefinition.getName()]: '10',
+        };
+        survey.refreshReplacer(answers);
         expect(targetOutputDefinition.getOutputType()).toBe('number');
-        expect(item.isVisibilityConditionMatch(survey, Map({ [targetOutputDefinition.getName()]: `{{${targetOutputDefinition.getId()}.answer_value}}` }))).toBe(true);
+        expect(item.isVisibilityConditionMatch(survey, Map(answers))).toBe(true);
       });
     });
   });
