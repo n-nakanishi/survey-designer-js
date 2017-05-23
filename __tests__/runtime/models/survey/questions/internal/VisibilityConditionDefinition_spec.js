@@ -1,13 +1,19 @@
 /* eslint-env jest */
 import { List } from 'immutable';
 import SurveyDesignerState from '../../../../../../lib/runtime/models/SurveyDesignerState';
+import SurveyDefinition from '../../../../../../lib/runtime/models/survey/SurveyDefinition';
 import OutputDefinition from '../../../../../../lib/runtime/models/survey/questions/internal/OutputDefinition';
+import ChoiceDefinition from '../../../../../../lib/runtime/models/survey/questions/internal/ChoiceDefinition';
 import VisibilityConditionDefinition from '../../../../../../lib/runtime/models/survey/questions/internal/VisibilityConditionDefinition';
 import allOutputTypeJson from './VisibilityConditionDefinition_allOutputType.json';
 import * as ItemVisibility from '../../../../../../lib/constants/ItemVisibility';
 
 describe('VisibilityConditionDefinition', () => {
   describe('updateProperties', () => {
+    // テストには実際には使わないがダミーとして
+    const survey = new SurveyDefinition();
+    survey.refreshReplacer();
+
     it('すべての項目が更新されること', () => {
       const vcd = new VisibilityConditionDefinition({
         _id: 'id1',
@@ -23,7 +29,7 @@ describe('VisibilityConditionDefinition', () => {
         new OutputDefinition({ _id: 'od2', outputType: 'number' }),
       ]);
 
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         outputDefinitionId: 'od2',
         comparisonType: 'answerValue',
         value: '{{od1.answer_value}}',
@@ -48,7 +54,7 @@ describe('VisibilityConditionDefinition', () => {
         visibilityType: 'show',
       });
       const outputDefinitions = List();
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         outputDefinitionId: '',
       });
       expect(result).toBe(null);
@@ -64,13 +70,13 @@ describe('VisibilityConditionDefinition', () => {
         visibilityType: 'show',
       });
       const outputDefinitions = List();
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         outputDefinitionId: 'abce',
       });
       expect(result).toBe(null);
     });
 
-    it('設問が変更され指定できない比較タイプが設定されていた場合は比較タイプ,value,operatorが空になる', () => {
+    it('設問が変更され指定できない比較タイプが設定されていた場合は比較タイプ,value,operatorが空になる(outputTypeがradio以外)', () => {
       const vcd = new VisibilityConditionDefinition({
         _id: 'id1',
         outputDefinitionId: 'od1',
@@ -83,13 +89,79 @@ describe('VisibilityConditionDefinition', () => {
         new OutputDefinition({ _id: 'od1', outputType: 'number' }),
         new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
       ]);
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         outputDefinitionId: 'od2',
       });
       expect(result.getId()).toBe('id1');
       expect(result.getOutputDefinitionId()).toBe('od2');
       expect(result.getComparisonType()).toBe(null);
       expect(result.getValue()).toBe(null);
+      expect(result.getOperator()).toBe(null);
+      expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('設問が変更され指定できない比較タイプが設定されていた場合は比較タイプ,valueが空にならない(outputTypeがradio)', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od1',
+        comparisonType: null,
+        value: '{{od1.answer_value}}',
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({ _id: 'od1', outputType: 'number' }),
+        new OutputDefinition({ _id: 'od2', outputType: 'radio' }),
+      ]);
+      const result = vcd.updateProperties(survey, outputDefinitions, {
+        outputDefinitionId: 'od2',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getOutputDefinitionId()).toBe('od2');
+      expect(result.getComparisonType()).toBe(null);
+      expect(result.getValue()).toBe('{{od1.answer_value}}');
+      expect(result.getOperator()).toBe(null);
+      expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('outputTypeがradioの場合、比較値に選択肢を設定できる', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od2',
+        comparisonType: null,
+        value: null,
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({
+          _id: 'od1',
+          outputType: 'number',
+          name: 'odName1',
+          outputNo: '1-1',
+        }),
+        new OutputDefinition({
+          _id: 'od2',
+          outputType: 'radio',
+          name: 'odName2',
+          outputNo: '1-2',
+          choices: List([new ChoiceDefinition({
+            _id: 'choice1',
+            label: 'ChoiceLabel',
+            value: '1',
+          })]),
+        }),
+      ]);
+      // mock
+      survey.getAllOutputDefinitions = () => outputDefinitions;
+      survey.refreshReplacer();
+      const result = vcd.updateProperties(survey, outputDefinitions, {
+        value: '{{choice1.choice_value}}',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getOutputDefinitionId()).toBe('od2');
+      expect(result.getComparisonType()).toBe(null);
+      expect(result.getValue()).toBe('{{choice1.choice_value}}');
       expect(result.getOperator()).toBe(null);
       expect(result.getVisibilityType()).toBe('show');
     });
@@ -107,7 +179,7 @@ describe('VisibilityConditionDefinition', () => {
         new OutputDefinition({ _id: 'od1', outputType: 'number' }),
         new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
       ]);
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         value: 'a',
       });
       expect(result.getId()).toBe('id1');
@@ -131,7 +203,7 @@ describe('VisibilityConditionDefinition', () => {
         new OutputDefinition({ _id: 'od1', outputType: 'number' }),
         new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
       ]);
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         comparisonType: 'answerValue',
         value: '{{od1.answer_value}}',
       });
@@ -156,7 +228,7 @@ describe('VisibilityConditionDefinition', () => {
         new OutputDefinition({ _id: 'od1', outputType: 'number' }),
         new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
       ]);
-      const result = vcd.updateProperties(outputDefinitions, {
+      const result = vcd.updateProperties(survey, outputDefinitions, {
         comparisonType: 'answerValue',
       });
       expect(result.getId()).toBe('id1');
@@ -165,6 +237,26 @@ describe('VisibilityConditionDefinition', () => {
       expect(result.getValue()).toBe(null);
       expect(result.getOperator()).toBe('==');
       expect(result.getVisibilityType()).toBe('show');
+    });
+
+    it('comparisonTypeに不正な文字列を設定した場合nullになる', () => {
+      const vcd = new VisibilityConditionDefinition({
+        _id: 'id1',
+        outputDefinitionId: 'od1',
+        comparisonType: 'fixedValue',
+        value: '10',
+        operator: '==',
+        visibilityType: 'show',
+      });
+      const outputDefinitions = List([
+        new OutputDefinition({ _id: 'od1', outputType: 'number' }),
+        new OutputDefinition({ _id: 'od2', outputType: 'checkbox' }),
+      ]);
+      const result = vcd.updateProperties(survey, outputDefinitions, {
+        comparisonType: 'abc',
+      });
+      expect(result.getId()).toBe('id1');
+      expect(result.getComparisonType()).toBe(null);
     });
   });
 
@@ -410,6 +502,36 @@ describe('VisibilityConditionDefinition', () => {
         expect(errors.size).toBe(2);
         expect(errors.get(0)).toBe('パネルが選択されていません');
         expect(errors.get(1)).toBe('設問 1-1 選択肢1 表示条件で条件種別が不正です');
+      });
+
+      it('存在するchoiceのvalueを設定している場合、エラーとならない', () => {
+        let survey = SurveyDesignerState.createFromJson({ survey: allOutputTypeJson }).getSurvey();
+        survey = survey.updateIn(['pages', 0, 'questions', 0, 'items', 0], item => item.set('visibilityCondition', new VisibilityConditionDefinition({
+          outputDefinitionId: survey.getAllOutputDefinitions().get(outputDefinitionIndex).getId(),
+          comparisonType: null,
+          value: '{{cj2zzy0i0000i3k67ac8dv8bq.choice_value}}',
+          operator: '!!',
+          visibilityType: ItemVisibility.HIDE,
+        })));
+        survey.refreshReplacer();
+        const errors = survey.validate();
+        expect(errors.size).toBe(1);
+        expect(errors.get(0)).toBe('パネルが選択されていません');
+      });
+
+      it('存在しないchoiceのvalueを設定している場合、エラーなる', () => {
+        let survey = SurveyDesignerState.createFromJson({ survey: allOutputTypeJson }).getSurvey();
+        survey = survey.updateIn(['pages', 0, 'questions', 0, 'items', 0], item => item.set('visibilityCondition', new VisibilityConditionDefinition({
+          outputDefinitionId: survey.getAllOutputDefinitions().get(outputDefinitionIndex).getId(),
+          comparisonType: null,
+          value: '{{dummy.choice_value}}',
+          operator: '!!',
+          visibilityType: ItemVisibility.HIDE,
+        })));
+        survey.refreshReplacer();
+        const errors = survey.validate();
+        expect(errors.size).toBe(2);
+        expect(errors.get(0)).toBe('パネルが選択されていません');
       });
     });
 
